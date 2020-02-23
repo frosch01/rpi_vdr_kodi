@@ -1,0 +1,11 @@
+[Unit]
+Description = Wake-On-LAN listener that runs kodi.service
+After = remote-fs.target network-online.target
+Wants = network-online.target
+
+[Service]
+Type = simple
+ExecStart = /usr/local/bin/wol_listener.py
+
+[Install]
+WantedBy = multi-user.target

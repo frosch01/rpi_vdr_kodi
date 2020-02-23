@@ -1,0 +1,19 @@
+[Unit]
+Description = Kodi Media Center
+After = remote-fs.target network-online.target lircd.service
+Wants = network-online.target lircd.service
+
+[Service]
+User = pi
+Group = pi
+Type = simple
+ExecStart = /usr/bin/kodi
+Restart = on-abort
+RestartSec = 5
+StandardInput=tty-force
+StandardOutput=inherit
+StandardError=inherit
+TTYPath=/dev/tty7
+
+[Install]
+WantedBy = multi-user.target
