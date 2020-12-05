@@ -6,6 +6,8 @@ Wants = network-online.target
 [Service]
 Type = simple
 ExecStart = /usr/local/bin/wol_listener.py
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy = multi-user.target

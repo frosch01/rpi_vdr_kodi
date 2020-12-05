@@ -6,6 +6,8 @@ import subprocess
 import dbus
 import getmac
 
+print("WOL listener running")
+
 mymac_bytes = bytes.fromhex(getmac.get_mac_address(interface="eth0").replace(':', ''))
 
 dbus_systemd='org.freedesktop.systemd1'
@@ -30,6 +32,8 @@ while True:
                 if (kodi_service.Get(dbus_intrfc_unit, 'ActiveState', dbus_interface=dbus_intrfc_properties) == "inactive"):
                     kodi_service.Start('fail', dbus_interface=dbus_intrfc_unit)
                     print("Kodi.service started successfully")
+                else:
+                    print("Kodi.service already running") 
             except:
                  print("Unable to Start() kodi.service", file=sys.stderr)
         else:
