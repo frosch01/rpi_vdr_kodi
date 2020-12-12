@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 import subprocess
 import asyncio
+import logging
+import coloredlogs
 import getmac
 
 from dbus_next.aio import MessageBus
@@ -27,24 +29,26 @@ class WolReceiver(asyncio.DatagramProtocol):
             self.wol_callback(addr)
 
     async def init(self):
-        print("WOL listener running")
+        logging.debug("WOL listener running")
         loop = asyncio.get_running_loop()
         await loop.create_datagram_endpoint(lambda: self, local_addr=('0.0.0.0', 9))
 
 
 class RaspberryPiHdmi():  # pylint: disable = too-few-public-methods
     """Frontend to vcgencmd for getting/setting HDMI state"""
+    def __init__(self):
+        logging.debug("Current display power status is %s", 'ON' if self.state else 'OFF')
 
     @property
     def state(self):  # pylint: disable = no-self-use
-        result = str(subprocess.check_output([b'vcgencmd', b'display_power']))
+        result = bytes(subprocess.check_output([b'vcgencmd', b'display_power']))
         return b'=1' in result
 
     @state.setter
     def state(self, state):  # pylint: disable = no-self-use
         arg = b'1' if state else b'0'
         subprocess.check_output([b'vcgencmd', b'display_power', arg])
-        print(f"HDMI port {'en' if state else 'dis'}abled sucessfully")
+        logging.debug("HDMI port %sabled sucessfully", 'en' if state else 'dis')
 
 
 class DbusSystemdService():
@@ -62,20 +66,19 @@ class DbusSystemdService():
     # systemd.unit interface of DBUS systemd.unit objects
     DBUS_INTERFACE_PROPERTIES = 'org.freedesktop.DBus.Properties'
 
-    @classmethod
-    def mangle_unit_object_name(cls, name):
+    def get_mangled_unit_object_name(self):
         """Return a string with delimiters replaced by _<hex(ascii(delimiter))>
         """
         # Each delimiter in a service name is replaced by '_<hex(ascii(delimiter))>'
-        return ''.join(map(lambda x: x if x not in ' _.' else '_' + format(ord(x), 'x'), name))
+        return ''.join(map(lambda x: x if x not in ' _.' else '_' + format(ord(x), 'x'), self.service_name))
 
-    def __init__(self, name):
+    def __init__(self, name, status_callback=None):
         self.service_name = name
-        self.dbus_name = self.DBUS_OBJECT_UNIT_BASE + self.mangle_unit_object_name(name)
         self.service_if = None
         self.service_state = None
         self.properties_if = None
         self.previous_hdmi_state = None
+        self.status_callback = status_callback
 
     @property
     def state(self):
@@ -83,15 +86,16 @@ class DbusSystemdService():
 
     @state.setter
     def state(self, val):
-        print(f"Service {self.service_name} entered state {val}")
+        logging.debug("Service %s entered state %s", self.service_name, val)
         self.service_state = val
 
     async def init(self):
+        dbus_name = self.DBUS_OBJECT_UNIT_BASE + self.get_mangled_unit_object_name()
         bus = await MessageBus(bus_type=BusType.SYSTEM).connect()
         # Get introspection XML
-        introspection = await bus.introspect(self.DBUS_SERVICE_SYSTEMD, self.dbus_name)
+        introspection = await bus.introspect(self.DBUS_SERVICE_SYSTEMD, dbus_name)
         # Select systemd service object
-        obj = bus.get_proxy_object(self.DBUS_SERVICE_SYSTEMD, self.dbus_name, introspection)
+        obj = bus.get_proxy_object(self.DBUS_SERVICE_SYSTEMD, dbus_name, introspection)
         # Get required interfaces
         self.service_if = obj.get_interface(self.DBUS_INTERFACE_UNIT)
         self.properties_if = obj.get_interface(self.DBUS_INTERFACE_PROPERTIES)
@@ -106,39 +110,62 @@ class DbusSystemdService():
             new_service_state = changed_properties['ActiveState'].value
             if new_service_state != self.state:
                 self.state = new_service_state
+                if self.status_callback:
+                    self.status_callback(new_service_state)
         except KeyError:
             pass
 
-    async def start(self):
+    def service_status_changed(self, task):  # pylint: disable = no-self-use
+        if task.exception():
+            raise task.exception
+
+    def start(self):
         if self.state == 'inactive':
-            print(f"Starting {self.service_name}...")
-            await self.service_if.call_start('replace')
+            logging.debug("Starting %s...", self.service_name)
+            loop = asyncio.get_running_loop()
+            task = loop.create_task(self.service_if.call_start('replace'))
+            task.add_done_callback(self.service_status_changed)
 
-    async def stop(self):
+    def stop(self):
         if self.state == 'active':
-            print(f"Stoping {self.service_name}...")
-            await self.service_if.call_stop('replace')
+            logging.debug("Stopping %s...", self.service_name)
+            loop = asyncio.get_running_loop()
+            task = loop.create_task(self.service_if.call_stop('replace'))
+            task.add_done_callback(self.service_status_changed)
 
+class KodiManager():
+    def __init__(self):
+        self.hdmi = RaspberryPiHdmi()
+        self.kodi = DbusSystemdService('kodi.service', self.kodi_status_change)
+        self.wol_receiver = WolReceiver(self.kodi_start)
+        self.display_state_original = self.hdmi.state
 
-async def main():
-    hdmi = RaspberryPiHdmi()
-    print(hdmi.state)
+    async def init(self):
+        await self.kodi.init()
+        await self.wol_receiver.init()
 
-    kodi = DbusSystemdService('kodi.service')
-    await kodi.init()
+    def kodi_start(self, addr):
+        logging.debug("Kodi start requested by %s:%d", addr[0], addr[1])
+        self.kodi.start()
 
-    await kodi.start()
-
-    await asyncio.sleep(5)
-
-    await kodi.stop()
-
-    # Commented for now...
-    #wol_receiver = WolReceiver(kodi.start_kodi)
-    #await wol_receiver.init()
-
-    # Wait for a never completing future - forever
-    #await asyncio.get_running_loop().create_future()
+    def kodi_status_change(self, new_state):
+        if new_state == 'active':
+            logging.debug("Kodi status changed to %s", new_state)
+            self.display_state_original = self.hdmi.state
+            self.hdmi.state = True
+        elif new_state == 'inactive':
+            self.hdmi.state = self.display_state_original
 
 if __name__ == "__main__":
+
+    async def main():
+        # Create an instance of kodi manager and initialize
+        kodi_manager = KodiManager()
+        await kodi_manager.init()
+
+        # Wait for a never completing future - forever
+        await asyncio.get_running_loop().create_future()
+
+    coloredlogs.install(level='DEBUG')
+
     asyncio.run(main())
