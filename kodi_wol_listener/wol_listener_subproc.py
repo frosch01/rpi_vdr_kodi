@@ -106,8 +106,11 @@ class KodiManager():
         self.wol_receiver = WolReceiver(self.kodi_start)
         self.kodi_running = False
 
-    async def init(self):
+    async def main(self):
+        """The asyncio based application main()"""
         await self.wol_receiver.init()
+        # Wait for a never completing future - forever
+        await asyncio.get_running_loop().create_future()
 
     async def kodi_exec(self):
         try:
@@ -140,15 +143,6 @@ class KodiManager():
 
 
 if __name__ == "__main__":
-
-    async def main():
-        """The asyncio based main()"""
-        # Create an instance of kodi manager and initialize
-        kodi_manager = KodiManager()
-        await kodi_manager.init()
-
-        # Wait for a never completing future - forever
-        await asyncio.get_running_loop().create_future()
-
     coloredlogs.install(level='DEBUG')
-    asyncio.run(main())
+    kodi = KodiManager()
+    asyncio.run(kodi.main())
