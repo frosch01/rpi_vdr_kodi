@@ -1,4 +1,12 @@
 #!/usr/bin/env python3
+"""This program was intended to work on the system dbus and on the session
+dbus. Unfortunately systemd running for a user is not emitting signals about
+units, so the concept is broken. So this solution is limited to have kodi
+running as a system service.
+
+As a solution for an in session activtion, kodi is started directly as a child
+of the running process. This can be found in the file wol_listener_subproc.py
+"""
 import subprocess
 import asyncio
 import logging
@@ -134,6 +142,11 @@ class DbusSystemdService():
             task.add_done_callback(self.service_status_changed)
 
 class KodiManager():
+    """Manages the activation of kodi as a systemd service on an incoming WOL
+    pattern. The kodi display output is activated and put into the same state
+    it was before kodi has been activated. This is done by monitoring the
+    state of the kodi systemd unit.
+    """
     def __init__(self):
         self.hdmi = RaspberryPiHdmi()
         self.kodi = DbusSystemdService('kodi.service', self.kodi_status_change)
