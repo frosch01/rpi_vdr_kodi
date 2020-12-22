@@ -11,6 +11,8 @@ a user space application as they are based on UDP/IP communication.
 import sys
 import asyncio
 import logging
+import signal
+import functools
 import coloredlogs
 import getmac
 
@@ -105,12 +107,28 @@ class KodiManager():
         self.kodi = Subprocess(b'/usr/bin/kodi', abort_on_fail=False)
         self.wol_receiver = WolReceiver(self.kodi_start)
         self.kodi_running = False
+        self.exit_future = None
+
+    def _exit(self, signame, loop):
+        if self.exit_future:
+            self.exit_future.set_result(signame)
+        else:
+            loop.stop()
 
     async def main(self):
         """The asyncio based application main()"""
+        # Install a signal handler for common UNIX signals
+        loop = asyncio.get_running_loop()
+        for signame in {'SIGINT', 'SIGTERM'}:
+            loop.add_signal_handler(
+                getattr(signal, signame),
+                functools.partial(self._exit, signame, loop))
+        # Initialize WOL receiver. Any activity will be triggerd by this
+        # WOL protocol
         await self.wol_receiver.init()
         # Wait for a never completing future - forever
-        await asyncio.get_running_loop().create_future()
+        self.exit_future = loop.create_future()
+        await self.exit_future
 
     async def kodi_exec(self):
         try:
