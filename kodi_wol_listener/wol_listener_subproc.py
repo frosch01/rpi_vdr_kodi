@@ -13,8 +13,19 @@ import asyncio
 import logging
 import signal
 import functools
+import enum
 import coloredlogs
 import getmac
+import typer
+
+class DebugLevel(enum.Enum):
+    NOTSET = 'notset'
+    DEBUG = 'debug'
+    INFO = 'info'
+    WARNING = 'warning'
+    ERROR = 'error'
+    CRITICAL = 'critical'
+
 
 class WolReceiver(asyncio.DatagramProtocol):
     """Asyncio based Wake On LAN receiver listening on UDP port 9"""
@@ -36,10 +47,10 @@ class WolReceiver(asyncio.DatagramProtocol):
         if b'\xff'*6 == data[:6] and self.mymac_bytes == data[6:12]:
             self.wol_callback(addr)
 
-    async def init(self):
+    async def init(self, port):
         logging.debug("WOL listener running")
         loop = asyncio.get_running_loop()
-        await loop.create_datagram_endpoint(lambda: self, local_addr=('0.0.0.0', 42429))
+        await loop.create_datagram_endpoint(lambda: self, local_addr=('0.0.0.0', port))
 
 
 class Subprocess():  # pylint: disable=logging-fstring-interpolation
@@ -97,6 +108,7 @@ class RaspberryPiHdmi(Subprocess):
         await self.run_wait(arg)
         logging.debug("HDMI port %sabled sucessfully", 'en' if state else 'dis')
 
+
 class KodiManager():
     """Manages the activation of kodi as a subprocess an incoming WOL pattern.
     The kodi display output is activated and put into the same state it was
@@ -115,7 +127,14 @@ class KodiManager():
         else:
             loop.stop()
 
-    async def main(self):
+    def _typer_run(self, port: int=42429, debug_level: DebugLevel='warning'):
+        coloredlogs.install(debug_level.value)
+        asyncio.run(self.main(port))
+
+    def run(self):
+        typer.run(self._typer_run)
+
+    async def main(self, port):
         """The asyncio based application main()"""
         # Install a signal handler for common UNIX signals
         loop = asyncio.get_running_loop()
@@ -125,7 +144,7 @@ class KodiManager():
                 functools.partial(self._exit, signame, loop))
         # Initialize WOL receiver. Any activity will be triggerd by this
         # WOL protocol
-        await self.wol_receiver.init()
+        await self.wol_receiver.init(port)
         # Wait for a never completing future - forever
         self.exit_future = loop.create_future()
         await self.exit_future
@@ -161,6 +180,4 @@ class KodiManager():
 
 
 if __name__ == "__main__":
-    coloredlogs.install(level='DEBUG')
-    kodi = KodiManager()
-    asyncio.run(kodi.main())
+    KodiManager().run()
