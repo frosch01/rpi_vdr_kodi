@@ -1,4 +1,7 @@
 """A wrapper around the Raspberry PI vcgencmd display_power command"""
+
+#TODO: Get things done without using subprocess, provide native implementation
+
 import logging
 from async_subprocess import AsyncSubprocess
 
