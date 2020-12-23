@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [tool.tox]
 legacy_tox_ini = """
 [tox]
-envlist = py37
+envlist = clean,py37
 isolated_build = True
 
 [testenv]
@@ -15,5 +15,10 @@ deps = pytest>=6.2.1
        pytest-mock>=3.4.0
        getmac>=0.8.2
 
-commands = pytest
+commands = pytest --cov=kodi_wol_listener --cov-append --cov-report=term-missing
+
+[testenv:clean]
+deps = coverage
+skip_install = true
+commands = coverage erase
 """
