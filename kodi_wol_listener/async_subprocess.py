@@ -58,7 +58,8 @@ class AsyncSubprocess():  # pylint: disable=logging-fstring-interpolation
             stderr (bytes) Error output from process execution
         """
         if returncode != 0:
-            logging.log(self.abort_level, f"subprocess {self.cmd} exited with error code {returncode}")
+            logging.log(self.abort_level,
+                        f"subprocess {self.cmd} exited with error code {returncode}")
             if stdout:
                 logging.log(self.abort_level, f'[stdout]\n{stdout.decode()}')
             if stderr:
