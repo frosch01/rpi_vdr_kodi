@@ -73,7 +73,9 @@ class KodiManager():
         await self.wol_receiver.init(port)
         # Wait for a never completing future - forever
         self.exit_future = loop.create_future()
-        await self.exit_future
+        ret = await self.exit_future
+        if isinstance(ret, Exception):
+            raise ValueError(ret) from ret
 
     async def kodi_exec(self):
         """Run kodi as subprocess and wait until finished, activate HDMI output
