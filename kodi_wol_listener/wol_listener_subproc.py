@@ -17,9 +17,9 @@ import enum
 import coloredlogs
 import typer
 
-from async_subprocess import AsyncSubprocess
-from rpi_hdmi import RaspberryPiHdmi
-from wol_receiver import WolReceiver
+from kodi_wol_listener.async_subprocess import AsyncSubprocess
+from kodi_wol_listener.rpi_hdmi import RaspberryPiHdmi
+from kodi_wol_listener.wol_receiver import WolReceiver
 
 
 class KodiManager():
@@ -101,7 +101,3 @@ class KodiManager():
         else:
             logging.debug("Kodi start requested by %s:%d but kodi is running already",
                           addr[0], addr[1])
-
-
-if __name__ == "__main__":
-    KodiManager().run()
