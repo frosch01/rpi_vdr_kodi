@@ -1,0 +1,7 @@
+[Unit]
+Description = A dummy service
+
+[Service]
+Type = simple
+ExecStart = /bin/true
+RemainAfterExit=yes
