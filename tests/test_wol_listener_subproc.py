@@ -83,3 +83,29 @@ async def test_run_kodi_bad(app, mock_coroutine):
     get_state_mock.side_effect = AssertionError('Intended error')
     with pytest.raises(SystemExit):
         await app.kodi_exec()
+
+def test_exit_no_run(mocker, event_loop, app):
+    import asyncio
+    app, _ = app
+    app._exit(mocker.sentinel.signame, event_loop)
+    assert not event_loop.is_running()
+
+@pytest.mark.asyncio
+async def test_start(caplog, mocker, event_loop, app, mock_coroutine):
+    import asyncio
+    caplog.set_level('DEBUG')
+    app, _ = app
+    _, get_state_mock = mock_coroutine(app, 'kodi_exec')
+    app.kodi_done_cb = mocker.Mock(wraps=app.kodi_done_cb)
+    # A new task is expected to be created
+    assert len(asyncio.all_tasks(event_loop)) == 1
+    app.kodi_start(('hello', 42))
+    assert len(asyncio.all_tasks(event_loop)) == 2
+    assert app.kodi_running
+    # A 2nd start shall not be possible
+    app.kodi_start(('world', 21))
+    assert len(asyncio.all_tasks(event_loop)) == 2
+    # Let the loop run for a short amount of time (kodi executes async)
+    await asyncio.sleep(0.1)
+    app.kodi_done_cb.assert_called_once()
+    assert not app.kodi_running

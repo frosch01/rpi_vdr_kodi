@@ -114,8 +114,9 @@ class KodiManager():
         if not self.kodi_running:
             logging.debug("Kodi start requested by %s:%d", addr[0], addr[1])
             self.kodi_running = True
-            task = asyncio.get_running_loop().create_task(self.kodi_exec())
-            task.add_done_callback(self.kodi_done_cb)
+            start_task = asyncio.get_running_loop().create_task(self.kodi_exec())
+            start_task.add_done_callback(self.kodi_done_cb)
+
         else:
             logging.debug("Kodi start requested by %s:%d but kodi is running already",
                           addr[0], addr[1])
