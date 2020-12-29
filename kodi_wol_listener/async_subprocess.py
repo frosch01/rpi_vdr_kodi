@@ -4,9 +4,8 @@ import asyncio
 
 class AsyncSubprocess():  # pylint: disable=logging-fstring-interpolation
     """Asyncio based subprocess runner"""
-    def __init__(self, cmd_base, logging_level=logging.WARNING, abort_on_fail=True):
+    def __init__(self, cmd_base, abort_on_fail=True, logging_level=logging.WARNING):
         self.cmd_base = cmd_base
-        self.level = logging_level
         self.abort_on_fail = abort_on_fail
         if abort_on_fail:
             self.abort_level = logging.ERROR
@@ -22,7 +21,7 @@ class AsyncSubprocess():  # pylint: disable=logging-fstring-interpolation
             cmd_args (bytes) Additional argument to be added to the command string
         """
         self.cmd = self.cmd_base + b' ' + cmd_args
-        self.proc = await asyncio.create_subprocess_exec(
+        self.proc = await asyncio.create_subprocess_shell(
             self.cmd,
             stdout=asyncio.subprocess.PIPE,  #pylint: disable=no-member
             stderr=asyncio.subprocess.PIPE)  #pylint: disable=no-member
@@ -35,6 +34,8 @@ class AsyncSubprocess():  # pylint: disable=logging-fstring-interpolation
         """
         stdout, stderr = await self.proc.communicate()
         self._handle_subprocess_return(self.proc.returncode, stdout, stderr)
+        self.proc = None
+        self.cmd = None
         return stdout
 
     async def run_wait(self, cmd_args=b''):
@@ -57,11 +58,11 @@ class AsyncSubprocess():  # pylint: disable=logging-fstring-interpolation
             stderr (bytes) Error output from process execution
         """
         if returncode != 0:
-            level = self.abort_level if self.abort_on_fail else self.level
-            logging.log(level, f"subprocess {self.cmd} exited with error code {returncode}")
+            logging.log(self.abort_level,
+                        f"subprocess {self.cmd} exited with error code {returncode}")
             if stdout:
-                logging.log(level, f'[stdout]\n{stdout.decode()}')
+                logging.log(self.abort_level, f'[stdout]\n{stdout.decode()}')
             if stderr:
-                logging.log(level, f'[stderr]\n{stderr.decode()}')
+                logging.log(self.abort_level, f'[stderr]\n{stderr.decode()}')
             if self.abort_on_fail:
                 raise OSError(f"Error when executing command {self.cmd}: {stderr.decode()}")

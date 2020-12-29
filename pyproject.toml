@@ -1,3 +1,25 @@
 [build-system]
 requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[tool.tox]
+legacy_tox_ini = """
+[tox]
+envlist = clean,py37
+isolated_build = True
+
+[testenv]
+deps = pytest>=6.2.1
+       pytest-cov>=2.10.1
+       pytest-asyncio>=0.14.0
+       pytest-mock>=3.4.0
+       getmac>=0.8.2
+       pytest-pylint>=0.18.0
+
+commands = pytest --cov=kodi_wol_listener --cov-append --cov-report=term-missing --pylint --pylint-error-types=EF --pylint-jobs=8 --pylint-ignore=scratch
+
+[testenv:clean]
+deps = coverage
+skip_install = true
+commands = coverage erase
+"""

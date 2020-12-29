@@ -17,13 +17,14 @@ import enum
 import coloredlogs
 import typer
 
-from async_subprocess import AsyncSubprocess
-from rpi_hdmi import RaspberryPiHdmi
-from wol_receiver import WolReceiver
+from kodi_wol_listener.async_subprocess import AsyncSubprocess
+from kodi_wol_listener.rpi_hdmi import RaspberryPiHdmi
+from kodi_wol_listener.wol_receiver import WolReceiver
 
 
 class KodiManager():
-    """Manages the activation of kodi as a subprocess an incoming WOL pattern.
+    """Application that runs kodi as a subprocess on an incoming WOL pattern
+
     The kodi display output is activated and put into the same state it was
     before kodi has been activated.
     """
@@ -51,11 +52,12 @@ class KodiManager():
         else:
             loop.stop()
 
-    def _typer_run(self, port: int=42429, debug_level: DebugLevel='warning'):
+    def _typer_run(self, port: int = 42429, debug_level: DebugLevel = 'warning'):
         coloredlogs.install(debug_level.value)
         asyncio.run(self.main(port))
 
     def run(self):
+        """Execute the application. Returns as application exits"""
         typer.run(self._typer_run)
 
     async def main(self, port):
@@ -71,9 +73,16 @@ class KodiManager():
         await self.wol_receiver.init(port)
         # Wait for a never completing future - forever
         self.exit_future = loop.create_future()
-        await self.exit_future
+        ret = await self.exit_future
+        if isinstance(ret, Exception):
+            raise ValueError(ret) from ret
 
     async def kodi_exec(self):
+        """Run kodi as subprocess and wait until finished, activate HDMI output
+
+        After kodi has finished, the HDMI output is set to the state it was
+        before.
+        """
         try:
             display_state = await self.hdmi.get_state()
             if not display_state:
@@ -88,20 +97,26 @@ class KodiManager():
             sys.exit(1)
 
     def kodi_done_cb(self, fut):
+        """Callback called as kodi_exec() coroutine has finished"""
         # All excpetion are expected to be handled....
         fut.result()
         self.kodi_running = False
 
     def kodi_start(self, addr):
+        """API to trigger start of kodi
+
+        Creates an asyncio task that will run kodi. Returns immediately.
+        Task execution result is given to a callback.
+
+        In case Kodi was started already, another start is omitted until prev.
+        started kodi process has finished.
+        """
         if not self.kodi_running:
             logging.debug("Kodi start requested by %s:%d", addr[0], addr[1])
             self.kodi_running = True
-            task = asyncio.get_running_loop().create_task(self.kodi_exec())
-            task.add_done_callback(self.kodi_done_cb)
+            start_task = asyncio.get_running_loop().create_task(self.kodi_exec())
+            start_task.add_done_callback(self.kodi_done_cb)
+
         else:
             logging.debug("Kodi start requested by %s:%d but kodi is running already",
                           addr[0], addr[1])
-
-
-if __name__ == "__main__":
-    KodiManager().run()

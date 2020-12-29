@@ -1,3 +1,6 @@
+[![PyPI license](https://img.shields.io/pypi/l/ansicolortags.svg)](https://pypi.python.org/pypi/ansicolortags/)
+[![Ci status](https://github.com/nedbat/coveragepy/workflows/Test%20Suite/badge.svg)](https://github.com/nedbat/coveragepy/actions?query=workflow%3A%22Test+Suite%22)
+
 # rpi_vdr_kodi
 Integrate RPI based KODI with my living room
 
