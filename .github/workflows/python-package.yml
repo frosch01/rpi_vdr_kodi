@@ -21,6 +21,8 @@ jobs:
     - name: Provide dbus
       run: |
         sudo apt-get install dbus dbus-user-session dbus-x11
+        env
+        ps axu
     - name: Checkout repository
       uses: actions/checkout@v2
     - name: Set up Python ${{ matrix.python-version }}
