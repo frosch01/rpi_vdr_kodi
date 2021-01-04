@@ -239,19 +239,3 @@ class SystemdManager():
             unit (str) Unit to stop. Should be unit name, not path
         """
         await self.manager_if.call_stop_unit(unit, 'fail')
-
-
-#if __name__ == "__main__":
-    #async def main():
-        #"""Async main function to be executed using asyncio.run()"""
-        #systemd_session = await DbusSystemd().init()
-        #manager = await SystemdManager().init(systemd_session)
-        #await manager.link_unit(os.path.dirname(__file__) + '/dummy.service')
-        #await manager.reload()
-        #await manager.enable_unit('dummy.service')
-        #await manager.start_unit('dummy.service')
-        #await manager.stop_unit('dummy.service')
-        #await manager.disable_unit('dummy.service')
-        #await manager.reload()
-
-#asyncio.run(main())
