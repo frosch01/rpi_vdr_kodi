@@ -61,6 +61,7 @@ class SystemdUnit():
         self.properties_if = None
         self.previous_hdmi_state = None
         self.status_callback = status_callback
+        self.job = None
 
     @property
     def state(self):
@@ -129,24 +130,30 @@ class SystemdUnit():
         Args:
             task (asyncio.Task) The task that finished
         """
+        self.job = None
         if task.exception():
-            raise task.exception
+            raise task.exception()
 
     def start(self):
         """Create a start job for this unit"""
         if self.state == 'inactive':
             logging.debug("Starting %s...", self.service_name)
             loop = asyncio.get_running_loop()
-            task = loop.create_task(self.service_if.call_start('replace'))
-            task.add_done_callback(self.service_status_changed)
+            self.job = loop.create_task(self.service_if.call_start('replace'))
+            self.job.add_done_callback(self.service_status_changed)
 
     def stop(self):
         """Create a stop job for this unit"""
         if self.state == 'active':
             logging.debug("Stopping %s...", self.service_name)
             loop = asyncio.get_running_loop()
-            task = loop.create_task(self.service_if.call_stop('replace'))
-            task.add_done_callback(self.service_status_changed)
+            self.job = loop.create_task(self.service_if.call_stop('replace'))
+            self.job.add_done_callback(self.service_status_changed)
+
+    async def wait_for_job(self):
+        if self.job:
+            await self.job
+        self.job = None
 
 class SystemdManager():
     """Asyncio based Systemd.manager wrapper"""
@@ -189,6 +196,14 @@ class SystemdManager():
         """
         unit = os.path.abspath(unit)
         await self.manager_if.call_link_unit_files([unit], False, False)
+
+    async def get_unit(self, unit):
+        """Equivalent to systemctl status
+
+        Args:
+            unit (str) Unit to get. Should be unit name, not path
+        """
+        return await self.manager_if.call_get_unit(unit)
 
     async def enable_unit(self, unit):
         """Equivalent to systemctl enable

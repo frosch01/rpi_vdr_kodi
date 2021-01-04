@@ -5,3 +5,6 @@ Description = A dummy service
 Type = simple
 ExecStart = /bin/true
 RemainAfterExit=yes
+
+[Install]
+WantedBy=basic.target
