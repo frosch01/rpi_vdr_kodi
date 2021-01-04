@@ -3,6 +3,9 @@ Description = Wake-On-LAN listener that runs kodi.service
 
 [Service]
 Type = simple
-ExecStart = /usr/local/bin/wol_listener_subproc.py
+ExecStart = python3 -m kodi_wol_listener
 StandardOutput=journal
 StandardError=journal
+
+[Install]
+WantedBy=basic.target

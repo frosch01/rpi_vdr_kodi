@@ -53,7 +53,8 @@ def test_run(mocker, app):
     main.return_value = mocker.sentinel.main_coro
     typer = mocker.patch('kodi_wol_listener.wol_listener_subproc.typer')
     asyncio = mocker.patch('kodi_wol_listener.wol_listener_subproc.asyncio')
-    typer.run.side_effect = app._typer_run(mocker.sentinel.port, KodiManager.DebugLevel.INFO)
+    typer.run.side_effect = app._typer_run(mocker.sentinel.port, KodiManager.DebugLevel.INFO,
+                                           False, False)
     app.run()
     typer.run.assert_called_once_with(app._typer_run)
     asyncio.run.assert_called_once_with(mocker.sentinel.main_coro)

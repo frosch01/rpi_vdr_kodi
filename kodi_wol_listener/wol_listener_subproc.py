@@ -15,12 +15,12 @@ import signal
 import functools
 import enum
 import coloredlogs
+from typing import Optional
 import typer
 
 from kodi_wol_listener.async_subprocess import AsyncSubprocess
 from kodi_wol_listener.rpi_hdmi import RaspberryPiHdmi
 from kodi_wol_listener.wol_receiver import WolReceiver
-
 
 class KodiManager():
     """Application that runs kodi as a subprocess on an incoming WOL pattern
@@ -28,6 +28,8 @@ class KodiManager():
     The kodi display output is activated and put into the same state it was
     before kodi has been activated.
     """
+
+    SYSTEMD_SERVICE = 'kodi_wol_listener.service'
 
     class DebugLevel(enum.Enum):
         """Enumeration for logging related cli handling"""
@@ -52,9 +54,39 @@ class KodiManager():
         else:
             loop.stop()
 
-    def _typer_run(self, port: int = 42429, debug_level: DebugLevel = 'warning'):
+    def _typer_run(self,
+                   port: int = typer.Option(42429, help = "UDP/IP port to listen for WOL pattern"),
+                   debug_level: DebugLevel = 'warning',
+                   install: Optional[bool] = typer.Option(
+                       None, "--install", help = "Activate autostart via systemd user session"),
+                   uninstall: Optional[bool] = typer.Option(
+                       None, "--uninstall", help = "Remove autostart configuration")):
         coloredlogs.install(debug_level.value)
-        asyncio.run(self.main(port))
+        if install:
+            asyncio.run(self.install())
+        elif uninstall:
+            asyncio.run(self.uninstall())
+        else:
+            asyncio.run(self.main(port))
+
+    async def install(self):
+        import os
+        from kodi_wol_listener.dbus_systemd import DbusSystemd, SystemdManager
+        systemd_session = await DbusSystemd().init()
+        manager = await SystemdManager().init(systemd_session)
+        await manager.link_unit(os.path.dirname(__file__) + '/' + self.SYSTEMD_SERVICE)
+        await manager.reload()
+        await manager.enable_unit(self.SYSTEMD_SERVICE)
+        await manager.start_unit(self.SYSTEMD_SERVICE)
+
+    async def uninstall(self):
+        import os
+        from kodi_wol_listener.dbus_systemd import DbusSystemd, SystemdManager
+        systemd_session = await DbusSystemd().init()
+        manager = await SystemdManager().init(systemd_session)
+        await manager.stop_unit(self.SYSTEMD_SERVICE)
+        await manager.disable_unit(self.SYSTEMD_SERVICE)
+        await manager.reload()
 
     def run(self):
         """Execute the application. Returns as application exits"""
