@@ -59,7 +59,6 @@ class SystemdUnit():
         self.service_if = None
         self.service_state = None
         self.properties_if = None
-        self.previous_hdmi_state = None
         self.status_callback = status_callback
         self.job = None
 
@@ -151,6 +150,7 @@ class SystemdUnit():
             self.job.add_done_callback(self.service_status_changed)
 
     async def wait_for_job(self):
+        """Wait for a job started calling start or stop"""
         if self.job:
             await self.job
         self.job = None
