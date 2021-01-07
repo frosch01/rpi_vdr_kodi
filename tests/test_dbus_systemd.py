@@ -16,12 +16,12 @@ async def manager(systemd):
     import os
     from kodi_wol_listener.dbus_systemd import SystemdManager
     manager = await SystemdManager().init(systemd)
-    await manager.link_unit(os.path.dirname(__file__) + '/dummy.service')
+    await manager.link_unit(os.path.dirname(__file__) + '/wol_listener_test.service')
     await manager.reload()
-    await manager.enable_unit('dummy.service')
+    await manager.enable_unit('wol_listener_test.service')
     yield manager
-    await manager.stop_unit('dummy.service')
-    await manager.disable_unit('dummy.service')
+    await manager.stop_unit('wol_listener_test.service')
+    await manager.disable_unit('wol_listener_test.service')
     await manager.reload()
 
 @pytest.mark.asyncio
@@ -30,16 +30,16 @@ async def test_dbus_systemd(systemd):
 
 @pytest.mark.asyncio
 async def test_manager(manager):
-    await manager.start_unit('dummy.service')
-    await manager.get_unit('dummy.service')
-    await manager.stop_unit('dummy.service')
+    await manager.start_unit('wol_listener_test.service')
+    await manager.get_unit('wol_listener_test.service')
+    await manager.stop_unit('wol_listener_test.service')
 
 @pytest.mark.asyncio
 async def test_unit(mocker, systemd, manager):
     from kodi_wol_listener.dbus_systemd import SystemdUnit
-    await manager.start_unit('dummy.service')
+    await manager.start_unit('wol_listener_test.service')
     mock_cb = mocker.Mock()
-    dummy = await SystemdUnit('dummy.service', mock_cb).init(systemd)
+    dummy = await SystemdUnit('wol_listener_test.service', mock_cb).init(systemd)
     assert dummy.state == 'active'
     dummy.stop()
     await dummy.wait_for_job()

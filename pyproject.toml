@@ -16,7 +16,7 @@ deps = pytest>=6.2.1
        pytest-pylint>=0.18.0
        getmac>=0.8.2
 
-commands = pytest --cov=kodi_wol_listener --cov-append --cov-report=term-missing --pylint --pylint-error-types=EF --pylint-jobs=8 --pylint-ignore=scratch
+commands = pytest --cov=kodi_wol_listener --cov-report=term-missing --cov-append --pylint --pylint-error-types=EF --pylint-jobs=8 --pylint-ignore=scratch
 passenv = HOME DBUS_SESSION_BUS_ADDRESS XDG_RUNTIME_DIR
 
 [testenv:clean]
