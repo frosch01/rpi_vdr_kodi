@@ -160,7 +160,7 @@ async def test_run_kodi_ok(mocker, app, mock_coroutine, hdmi_state):
 async def test_run_kodi_bad(app, mock_coroutine):
     app, _ = app
     _, get_state_mock = mock_coroutine(app.hdmi, 'get_state')
-    get_state_mock.side_effect = AssertionError('Intended error')
+    get_state_mock.side_effect = OSError('Intended error')
     with pytest.raises(SystemExit):
         await app.kodi_exec()
 
