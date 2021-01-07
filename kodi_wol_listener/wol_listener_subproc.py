@@ -9,18 +9,20 @@ consumes very little power if in idle. But WOL pattern cal also received by
 a user space application as they are based on UDP/IP communication.
 """
 import sys
+import os
 import asyncio
 import logging
 import signal
 import functools
 import enum
-import coloredlogs
 from typing import Optional
+import coloredlogs
 import typer
 
 from kodi_wol_listener.async_subprocess import AsyncSubprocess
 from kodi_wol_listener.rpi_hdmi import RaspberryPiHdmi
 from kodi_wol_listener.wol_receiver import WolReceiver
+from kodi_wol_listener.dbus_systemd import DbusSystemd, SystemdManager
 
 class KodiManager():
     """Application that runs kodi as a subprocess on an incoming WOL pattern
@@ -70,8 +72,7 @@ class KodiManager():
             asyncio.run(self.main(port))
 
     async def install(self):
-        import os
-        from kodi_wol_listener.dbus_systemd import DbusSystemd, SystemdManager
+        """Install listener as a systemd service"""
         systemd_session = await DbusSystemd().init()
         manager = await SystemdManager().init(systemd_session)
         await manager.link_unit(os.path.dirname(__file__) + '/' + self.SYSTEMD_SERVICE)
@@ -80,8 +81,7 @@ class KodiManager():
         await manager.start_unit(self.SYSTEMD_SERVICE)
 
     async def uninstall(self):
-        import os
-        from kodi_wol_listener.dbus_systemd import DbusSystemd, SystemdManager
+        """Uninstall listener from systemd"""
         systemd_session = await DbusSystemd().init()
         manager = await SystemdManager().init(systemd_session)
         await manager.stop_unit(self.SYSTEMD_SERVICE)
@@ -124,7 +124,7 @@ class KodiManager():
             logging.debug("Kodi finshed")
             if not display_state:
                 await self.hdmi.set_state(display_state)
-        except BaseException as excp:
+        except OSError as excp:
             logging.error("Running external commands caused an exception:", exc_info=excp)
             sys.exit(1)
 
