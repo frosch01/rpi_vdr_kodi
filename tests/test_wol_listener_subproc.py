@@ -46,18 +46,97 @@ async def test_graceful_signals_new(event_loop, app_signal_handler, handled):
         with pytest.raises(ValueError):
             await asyncio.wait_for(app.main(0), 0.5, loop=event_loop)
 
-def test_run(mocker, app):
+@pytest.mark.parametrize('coro_name, install, uninstall', [
+    ('main', False, False),
+    ('install', True, False),
+    ('uninstall', False, True)])
+def test_run(mocker, app, coro_name, install, uninstall):
     from kodi_wol_listener.wol_listener_subproc import KodiManager
     app, _ = app
-    main = mocker.patch.object(app, 'main')
-    main.return_value = mocker.sentinel.main_coro
     typer = mocker.patch('kodi_wol_listener.wol_listener_subproc.typer')
     asyncio = mocker.patch('kodi_wol_listener.wol_listener_subproc.asyncio')
-    typer.run.side_effect = app._typer_run(mocker.sentinel.port, KodiManager.DebugLevel.INFO,
-                                           False, False)
+
+    # Execute main coroutine
+    main = mocker.patch.object(app, coro_name)
+    main.return_value = getattr(mocker.sentinel, coro_name + '_coro')
+    def typer_run(*args):
+        app._typer_run(mocker.sentinel.port, KodiManager.DebugLevel.INFO, install, uninstall)
+    typer.run.side_effect = typer_run
     app.run()
     typer.run.assert_called_once_with(app._typer_run)
-    asyncio.run.assert_called_once_with(mocker.sentinel.main_coro)
+    asyncio.run.assert_called_once_with(main.return_value)
+
+@pytest.fixture
+async def app_install(mocker, mock_coroutine):
+    from kodi_wol_listener.wol_listener_subproc import KodiManager
+    sysd = mocker.patch('kodi_wol_listener.wol_listener_subproc.DbusSystemd')
+    mngr = mocker.patch('kodi_wol_listener.wol_listener_subproc.SystemdManager')
+    sysd.return_value.init, sysd_init_mock = mock_coroutine()
+    mngr.return_value.init, mngr_init_mock = mock_coroutine()
+    sysd_init_mock.return_value = sysd.return_value
+    mngr_init_mock.return_value = mngr.return_value
+    mngr.return_value.link_unit, mngr_link_mock = mock_coroutine()
+    mngr.return_value.reload, mngr_reload_mock = mock_coroutine()
+    mngr.return_value.enable_unit, mngr_enable_mock = mock_coroutine()
+    mngr.return_value.disable_unit, mngr_disable_mock = mock_coroutine()
+    mngr.return_value.start_unit, mngr_start_mock = mock_coroutine()
+    mngr.return_value.stop_unit, mngr_stop_mock = mock_coroutine()
+    app = KodiManager()
+    return app, sysd, (sysd_init_mock,
+                       mngr_init_mock,
+                       mngr_link_mock,
+                       mngr_reload_mock,
+                       mngr_enable_mock,
+                       mngr_disable_mock,
+                       mngr_start_mock,
+                       mngr_stop_mock)
+
+@pytest.mark.asyncio
+async def test_install(app_install):
+    import os
+    from kodi_wol_listener import wol_listener_subproc
+    from kodi_wol_listener.wol_listener_subproc import KodiManager
+    app, sysd, (sysd_init_mock,
+                mngr_init_mock,
+                mngr_link_mock,
+                mngr_reload_mock,
+                mngr_enable_mock,
+                mngr_disable_mock,
+                mngr_start_mock,
+                mngr_stop_mock) = app_install
+    await app.install()
+    sysd_init_mock.assert_called_once_with()
+    mngr_init_mock.assert_called_once_with(sysd.return_value)
+    mngr_link_mock.assert_called_once_with(
+        os.path.dirname(wol_listener_subproc.__file__) + '/' + KodiManager.SYSTEMD_SERVICE)
+    mngr_reload_mock.assert_called_once_with()
+    mngr_enable_mock.assert_called_once_with(KodiManager.SYSTEMD_SERVICE)
+    mngr_disable_mock.assert_not_called()
+    mngr_start_mock.assert_called_once_with(KodiManager.SYSTEMD_SERVICE)
+    mngr_stop_mock.assert_not_called()
+
+@pytest.mark.asyncio
+async def test_uninstall(app_install):
+    import os
+    from kodi_wol_listener import wol_listener_subproc
+    from kodi_wol_listener.wol_listener_subproc import KodiManager
+    app, sysd, (sysd_init_mock,
+                mngr_init_mock,
+                mngr_link_mock,
+                mngr_reload_mock,
+                mngr_enable_mock,
+                mngr_disable_mock,
+                mngr_start_mock,
+                mngr_stop_mock) = app_install
+    await app.uninstall()
+    sysd_init_mock.assert_called_once_with()
+    mngr_init_mock.assert_called_once_with(sysd.return_value)
+    mngr_link_mock.assert_not_called()
+    mngr_reload_mock.assert_called_once_with()
+    mngr_enable_mock.assert_not_called()
+    mngr_disable_mock.assert_called_once_with(KodiManager.SYSTEMD_SERVICE)
+    mngr_start_mock.assert_not_called()
+    mngr_stop_mock.assert_called_once_with(KodiManager.SYSTEMD_SERVICE)
 
 @pytest.mark.parametrize('hdmi_state', [False, True])
 @pytest.mark.asyncio
