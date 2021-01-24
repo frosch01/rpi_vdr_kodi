@@ -1,0 +1,11 @@
+[Unit]
+Description = Run rsync daemon for user's Videos directory
+
+[Service]
+Type = simple
+ExecStart = /usr/bin/rsync --daemon --port=42873 --config=./rsync.conf --no-detach
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=basic.target
