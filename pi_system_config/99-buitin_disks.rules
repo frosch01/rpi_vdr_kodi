@@ -1,0 +1,4 @@
+# This rule automatically excludes USB disks that are used for bootting
+# The kernel seems to set the removable flag to 0 if the USB disk contains
+# the rootfs.
+SUBSYSTEM=="block", ATTRS{removable}=="0", ENV{UDISKS_IGNORE}="1"
