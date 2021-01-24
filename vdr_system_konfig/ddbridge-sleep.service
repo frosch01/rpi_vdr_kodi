@@ -1,0 +1,17 @@
+[Unit]
+Description=Restart ddbridge
+Before=sleep.target
+StopWhenUnneeded=yes
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=-/bin/systemctl stop vdr.service
+ExecStart=/sbin/modprobe -r ddbridge cxd2099 dvb_core
+ExecStop=/sbin/modprobe ddbridge cxd2099 dvb_core
+ExecStop=-/bin/systemctl start vdr.service
+ExecStop=-/bin/sh -c 'echo 0 > /sys/class/rtc/rtc0/wakealarm'
+
+[Install]
+WantedBy=sleep.target
+
