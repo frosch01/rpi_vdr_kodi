@@ -1,0 +1,10 @@
+[Unit]
+Description=WOL service
+
+[Service]
+ExecStart=/sbin/ethtool -s enp2s0  wol g
+Type=oneshpot
+RemainAfterExit=true
+
+[Install]
+WantedBy=multi-user.target

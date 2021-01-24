@@ -1,0 +1,16 @@
+[Unit]
+Description=Stop networking
+Before=sleep.target
+StopWhenUnneeded=yes
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+#ExecStart=-/usr/bin/nmcli device disconnect enp2s0
+#ExecStart=-/sbin/modprobe -d r8169
+#ExecStop=-/sbin/modprobe r8169
+#ExecStop=-/sbin/ethtool -s enp2s0 wol g
+
+[Install]
+WantedBy=sleep.target
+
