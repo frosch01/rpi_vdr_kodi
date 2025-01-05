@@ -15,8 +15,9 @@ class RaspberryPiHdmi():
 
     async def get_state(self):
         """Return the HDMI output state as bool"""
-        result = await self.vcgencmd.run_wait()
-        return b'=1' in result
+        state = b'=1' in (await self.vcgencmd.run_wait())[1]
+        logging.debug("HDMI is currently %sabled", 'en' if state else 'dis')
+        return state
 
     async def set_state(self, state):
         """Set the HDMI output state"""
