@@ -96,7 +96,7 @@ class KodiManager():
         """The asyncio based application main()"""
         # Install a signal handler for common UNIX signals
         loop = asyncio.get_running_loop()
-        for signame in {'SIGINT', 'SIGTERM'}:
+        for signame in ('SIGINT', 'SIGTERM'):
             loop.add_signal_handler(
                 getattr(signal, signame),
                 functools.partial(self._exit, signame, loop))

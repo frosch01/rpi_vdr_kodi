@@ -121,7 +121,7 @@ class SystemdUnit():
         except KeyError:
             pass
 
-    def service_status_changed(self, task):  # pylint: disable = no-self-use
+    def service_status_changed(self, task):
         """Callback called on finishing start/stop async tasks
 
         Handles exceptions occured from asyncio task
