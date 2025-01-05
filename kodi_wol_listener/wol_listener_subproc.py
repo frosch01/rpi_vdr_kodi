@@ -120,8 +120,16 @@ class KodiManager():
             if not display_state:
                 await self.hdmi.set_state(True)
             logging.debug("Running Kodi")
-            await self.kodi.run_wait()
-            logging.debug("Kodi finshed")
+            result = await self.kodi.run_wait()
+            if result[0] == 0:
+                logging.debug("Kodi finshed successfully")
+            else:
+                logging.debug("Kodi finshed with error, restarting Desktop")
+                await AsyncSubprocess(
+                    b'/usr/bin/sudo systemctl restart sddm', 
+                    abort_on_fail=False
+                ).run_wait()
+
             if not display_state:
                 await self.hdmi.set_state(display_state)
         except OSError as excp:

@@ -33,13 +33,14 @@ class AsyncSubprocess():  # pylint: disable=logging-fstring-interpolation
             (bytes) The output from the executed process
         """
         stdout, stderr = await self.proc.communicate()
-        self._handle_subprocess_return(self.proc.returncode, stdout, stderr)
+        returncode = self.proc.returncode
+        self._handle_subprocess_return(returncode, stdout, stderr)
         self.proc = None
         self.cmd = None
-        return stdout
+        return (returncode, stdout, stderr)
 
     async def run_wait(self, cmd_args=b''):
-        """Run process and return output, ewait until process has completed
+        """Run process and return output, wait until process has completed
 
         Args:
             cmd_args (bytes) Additional argument to be added to the command string
