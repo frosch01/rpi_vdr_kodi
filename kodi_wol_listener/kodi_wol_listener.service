@@ -3,7 +3,7 @@ Description = Wake-On-LAN listener that runs kodi.service
 
 [Service]
 Type = simple
-ExecStart = python3 -m kodi_wol_listener
+ExecStart = python3 -m kodi_wol_listener --debug-level debug
 StandardOutput=journal
 StandardError=journal
 
